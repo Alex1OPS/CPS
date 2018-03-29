@@ -10,6 +10,7 @@ sign = functools.partial(math.copysign, 1)
 DAYS_IN_SPRINT = 14
 HOURS_IN_DAY = 24
 
+
 def to_matrix(s, dev_count):
     m = []
     for i in range(dev_count):
@@ -28,6 +29,13 @@ def make_resource_row(rnd, dev_count, duration):
     r[rnd] = duration
     return r
 
+
+def get_deadline_area(task_deadline):
+    f_ = CpoStepFunction()
+    f_.set_value(0, DAYS_IN_SPRINT * HOURS_IN_DAY, 100)
+    f_.set_value(task_deadline * HOURS_IN_DAY + 1, DAYS_IN_SPRINT * HOURS_IN_DAY, 0)
+    return f_
+
 # -----------------------------------------------------------------------------
 # Подготовка данных
 # -----------------------------------------------------------------------------
@@ -38,7 +46,7 @@ def make_resource_row(rnd, dev_count, duration):
 # NUM_DEV_TASKS строк с задачами: оценка по времени, приоритет, крайний срок
 
 
-filename = os.path.dirname(os.path.abspath(__file__)) + "/data/rnd.data"
+filename = os.path.dirname(os.path.abspath(__file__)) + "/data/rnd_4_15.data"
 with open(filename, "r") as file:
     NUM_DEV_TASKS = [int(i) for i in file.readline().split()]
     NB_TASKS = sum(NUM_DEV_TASKS)
@@ -82,7 +90,7 @@ for i in range(NB_RESOURCES):
                 cnst_pr[1] = fdays * HOURS_IN_DAY + fhours
             elif fval == 1 and last_val == 0:
                 fs.set_value(cnst_pr[0], cnst_pr[1], 0)
-                # print("find interval from {} to {}".format(cnst_pr[0], cnst_pr[1]))
+                print("find interval from {} to {}".format(cnst_pr[0], cnst_pr[1]))
                 cnst_pr[0] = cnst_pr[1] = fdays * HOURS_IN_DAY + fhours
             elif fval == 0 and last_val == 1:
                 cnst_pr[0] = cnst_pr[1] = fdays * HOURS_IN_DAY + fhours
@@ -103,9 +111,9 @@ for i in range(NB_RESOURCES):
     successors_tasks = []
     high_priority = []
     for k, j in enumerate(TASKS):
-        if j["rnd"] == i and j["rank"] == 0:
-            successors_tasks.append(k)
         if j["rnd"] == i and j["rank"] == 1:
+            successors_tasks.append(k)
+        if j["rnd"] == i and j["rank"] == 0:
             high_priority.append(k)
 
     for s in high_priority:
@@ -133,8 +141,11 @@ for i in LINKED_TASKS:
             mdl.add(mdl.forbid_end(tasks[k], RND_CALENDAR[i["linked_rnd"]]))
 
 for k, j in enumerate(TASKS):
-    mdl.add(mdl.forbid_start(tasks[k], RND_CALENDAR[j["rnd"]]))
-    mdl.add(mdl.forbid_end(tasks[k], RND_CALENDAR[j["rnd"]]))
+    mdl.add(mdl.forbid_extent(tasks[k], RND_CALENDAR[j["rnd"]]))
+    # mdl.add(mdl.forbid_end(tasks[k], RND_CALENDAR[j["rnd"]]))
+
+for k, j in enumerate(TASKS):
+    mdl.add(mdl.forbid_extent(tasks[k], get_deadline_area(TASKS[k]["deadline"])))
 
 # Минимизируем время завершения последней задачи
 mdl.add(mdl.minimize(mdl.max([mdl.end_of(t) for t in tasks])))
@@ -147,6 +158,7 @@ print("Solving model....")
 msol = mdl.solve(FailLimit=100000, TimeLimit=10)
 print("Solution: ")
 msol.print_solution()
+# mdl.export_as_cpo()
 #
 if msol and visu.is_visu_enabled():
     load = [CpoStepFunction() for j in range(NB_RESOURCES)]
