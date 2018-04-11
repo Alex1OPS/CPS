@@ -1,9 +1,9 @@
+import functools
+import math
 import os
 
 import docplex.cp.utils_visu as visu
 from docplex.cp.model import CpoModel, CpoStepFunction, INTERVAL_MIN, INTERVAL_MAX
-import functools
-import math
 
 sign = functools.partial(math.copysign, 1)
 
@@ -36,6 +36,7 @@ def get_deadline_area(task_deadline):
     f_.set_value(task_deadline * HOURS_IN_DAY + 1, DAYS_IN_SPRINT * HOURS_IN_DAY, 0)
     return f_
 
+
 # -----------------------------------------------------------------------------
 # Подготовка данных
 # -----------------------------------------------------------------------------
@@ -51,7 +52,8 @@ with open(filename, "r") as file:
     NUM_DEV_TASKS = [int(i) for i in file.readline().split()]
     NB_TASKS = sum(NUM_DEV_TASKS)
     NB_RESOURCES = len(NUM_DEV_TASKS)
-    MM_DEV_ACTIVE_HOURS = to_matrix([int(i) for j in range(NB_RESOURCES) for i in file.readline().split()], NB_RESOURCES)
+    MM_DEV_ACTIVE_HOURS = to_matrix([int(i) for j in range(NB_RESOURCES) for i in file.readline().split()],
+                                    NB_RESOURCES)
     CAPACITIES = [sum(map(sum, MM_DEV_ACTIVE_HOURS[i])) for i in range(NB_RESOURCES)]
 
     TASKS = []
@@ -102,7 +104,7 @@ for i in range(NB_RESOURCES):
 # -----------------------------------------------------------------------------
 
 mdl = CpoModel()
-# задача = interval variables
+# задача в interval variables
 tasks = [mdl.interval_var(name="T{}".format(i + 1), size=DURATIONS[i]) for i in range(NB_TASKS)]
 
 # ОГРАНИЧЕНИЯ #
@@ -142,7 +144,6 @@ for i in LINKED_TASKS:
 
 for k, j in enumerate(TASKS):
     mdl.add(mdl.forbid_extent(tasks[k], RND_CALENDAR[j["rnd"]]))
-    # mdl.add(mdl.forbid_end(tasks[k], RND_CALENDAR[j["rnd"]]))
 
 for k, j in enumerate(TASKS):
     mdl.add(mdl.forbid_extent(tasks[k], get_deadline_area(TASKS[k]["deadline"])))
