@@ -1,3 +1,4 @@
+import random
 from collections import namedtuple
 
 import docplex.cp.utils_visu as visu
@@ -72,7 +73,7 @@ for i in range(SHELF_COUNT):
 # Размеры продуктов
 WEIGHT_SIZE_A = [25, 17, 16, 15, 11,
                  9, 8, 7, 6, 4,
-                 2, 20, 20, 5, 60]
+                 2, 20, 20, 10, 60]
 WEIGHT_SIZE_B = [10, 15, 2, 4, 8,
                  9, 3, 5, 2, 3,
                  1, 20, 20, 30, 40]
@@ -120,12 +121,16 @@ for i in range(NB_WEIGHTS):
                 | (mdl.end_of(vy[i]) <= mdl.start_of(vy[j])) | (mdl.end_of(vy[j]) <= mdl.start_of(vy[i])))
 
 # Соберём списки продуктов, которые не могут быть рядом
-# for i in range(NB_WEIGHTS):
-#     for j in range(i):
-#         if ((PRODUCT_CATS[i], PRODUCT_CATS[j]) in INCOMPATIBLE_GROUPS) or ((PRODUCT_CATS[j], PRODUCT_CATS[i]) in INCOMPATIBLE_GROUPS):
-#             print("Find incompatible group ({}, {})".format(PRODUCT_NAMES[i], PRODUCT_NAMES[j]))
-#             mdl.add(mdl.all_min_distance([mdl.end_of(vx[i]), mdl.start_of(vx[j], mdl.end_of(vy[i]), mdl.start_of(vy[j]))], 1))
-#             mdl.add(mdl.all_min_distance([mdl.start_of(vx[i]), mdl.end_of(vx[j], mdl.end_of(vy[i]), mdl.start_of(vy[j]))], 1))
+for i in range(NB_WEIGHTS):
+    for j in range(i):
+        if ((PRODUCT_CATS[i], PRODUCT_CATS[j]) in INCOMPATIBLE_GROUPS) or ((PRODUCT_CATS[j], PRODUCT_CATS[i]) in INCOMPATIBLE_GROUPS):
+            print("Find incompatible group ({}, {})".format(PRODUCT_NAMES[i], PRODUCT_NAMES[j]))
+            mdl.add(mdl.logical_not(
+                (mdl.start_of(vx[i]) == mdl.end_of(vx[j]))
+                | (mdl.start_of(vx[j]) == mdl.end_of(vx[i]))
+                | (mdl.start_of(vy[i]) == mdl.end_of(vy[j]))
+                | (mdl.start_of(vy[j]) == mdl.end_of(vy[i]))
+            ))
 
 
 # OF - минимум энергии, необходимой для поддержания температурных режимов продуктов на полках
@@ -135,11 +140,14 @@ mdl.add(mdl.minimize(
     )
 ))
 
+mdl.set_search_phases([mdl.search_phase(vx), mdl.search_phase(vy)])
+
 # -----------------------------------------------------------------------------
 # Решение solver'ом и вывод
 # -----------------------------------------------------------------------------
 print("Solving model....")
-msol = mdl.solve(FailLimit=100000000, TimeLimit=100, LogVerbosity="Terse")  # use "Quiet" or "Terse"
+msol = mdl.solve(FailLimit=100000000, TimeLimit=180, LogVerbosity="Terse", # use "Quiet" or "Terse"
+                 RandomSeed=random.randint(1, 1000))
 print("Solution: ")
 msol.print_solution()
 
