@@ -146,8 +146,8 @@ mdl.set_search_phases([mdl.search_phase(vx), mdl.search_phase(vy)])
 # Решение solver'ом и вывод
 # -----------------------------------------------------------------------------
 print("Solving model....")
-msol = mdl.solve(FailLimit=100000000, TimeLimit=180, LogVerbosity="Terse", # use "Quiet" or "Terse"
-                 RandomSeed=random.randint(1, 1000))
+msol = mdl.solve(FailLimit=100000000, TimeLimit=60 * 10, LogVerbosity="Terse", # use "Quiet" or "Terse"
+                 RandomSeed=random.randint(1, 1000), OptimalityTolerance=1.0, RelativeOptimalityTolerance=1.0)
 print("Solution: ")
 msol.print_solution()
 
