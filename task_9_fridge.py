@@ -85,7 +85,7 @@ PRODUCT_WEIGHT = [2, 7, 11, 2, 3,
 PRODUCT_NAMES = ["m" + str(i) for i in range(len(WEIGHT_SIZE_A))]
 PRODUCT_CATS = [FRUITS, FRUITS, FRUITS, FRUITS, FRUITS,
                 FRUITS, FRUITS, FRUITS, FRUITS, FRUITS,
-                FRUITS, FISH, FRUITS, FRUITS, FRUITS]
+                FRUITS, FRUITS, FRUITS, FISH, FRUITS]
 NB_WEIGHTS = len(WEIGHT_SIZE_A)
 
 if not len(WEIGHT_SIZE_A) == len(WEIGHT_SIZE_B) == len(PRODUCT_T):
@@ -118,6 +118,15 @@ for i in range(NB_WEIGHTS):
     for j in range(i):
         mdl.add((mdl.end_of(vx[i]) <= mdl.start_of(vx[j])) | (mdl.end_of(vx[j]) <= mdl.start_of(vx[i]))
                 | (mdl.end_of(vy[i]) <= mdl.start_of(vy[j])) | (mdl.end_of(vy[j]) <= mdl.start_of(vy[i])))
+
+# Соберём списки продуктов, которые не могут быть рядом
+# for i in range(NB_WEIGHTS):
+#     for j in range(i):
+#         if ((PRODUCT_CATS[i], PRODUCT_CATS[j]) in INCOMPATIBLE_GROUPS) or ((PRODUCT_CATS[j], PRODUCT_CATS[i]) in INCOMPATIBLE_GROUPS):
+#             print("Find incompatible group ({}, {})".format(PRODUCT_NAMES[i], PRODUCT_NAMES[j]))
+#             mdl.add(mdl.all_min_distance([mdl.end_of(vx[i]), mdl.start_of(vx[j], mdl.end_of(vy[i]), mdl.start_of(vy[j]))], 1))
+#             mdl.add(mdl.all_min_distance([mdl.start_of(vx[i]), mdl.end_of(vx[j], mdl.end_of(vy[i]), mdl.start_of(vy[j]))], 1))
+
 
 # OF - минимум энергии, необходимой для поддержания температурных режимов продуктов на полках
 mdl.add(mdl.minimize(
