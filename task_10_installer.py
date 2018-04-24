@@ -1,5 +1,6 @@
 import docplex.cp.utils_visu as visu
 from docplex.cp.model import CpoModel
+from transliterate import translit
 
 # Заведено 3 навыка - не будем городить классы и namedtuple'ы, т.к. будет проще записывать ограничения
 # (и сложнее разобраться в коде :D )
@@ -36,10 +37,18 @@ TASK_TEMPLATE_NAME = "T{num} - {name}"
 
 
 def print_tasks(tt):
-    for i, v in enumerate(tt):
-        print("Tasks for worker {}".format(INSTALLERS[i][0]))
+    for ivp, v in enumerate(tt):
+        print("Tasks for worker {}".format(INSTALLERS[ivp][0]))
         for p in v:
             print("... task = {}".format(p.get_name()))
+
+
+def trans_ru(text):
+    return translit(text, 'ru', reversed=True)
+
+
+def compact_name(text):
+    return text.split(" - ")[0]
 
 
 # Построим модель
@@ -64,34 +73,18 @@ for i in range(WORKERS_COUNT):
 # посмотрим, что создали
 # print_tasks(tasks)
 
+# Реально выполняемые задачи
+tasks_act = [mdl.interval_var(name="T{}_{}".format(str(i), WAIT_ORDERS[i][1]),
+                              size=WAIT_ORDERS[i][0],
+                              start=(0, MAX_SCHEDULE),
+                              end=(0, MAX_SCHEDULE)) for i in range(ORDERS_COUNT)]
 
 # одна задача - один монтажник
-for i in range(WORKERS_COUNT):
-    for j in range(len(tasks[i])):
-        a_t = tasks[i][j].get_name()
-
-        alternative_tasks = []
-        for i_alt in range(WORKERS_COUNT):
-            for j_alt in range(len(tasks[i_alt])):
-                if i_alt == i: continue
-                if a_t == tasks[i_alt][j_alt].get_name():
-                    alternative_tasks.append(tasks[i_alt][j_alt])
-
-        if len(alternative_tasks) != 0:
-            mdl.add(mdl.alternative(tasks[i][j], alternative_tasks))
-
-        # alternative_tasks = [tasks[p][k] for p in range(WORKERS_COUNT) for k in range(len(tasks[p])) if
-        #                      tasks[p][k].get_name() == a_t and p != i]
-        # alternative_worker = [(INSTALLERS[p][0], p) for p in range(WORKERS_COUNT) for k in range(len(tasks[p])) if
-        #                       tasks[p][k].get_name() == a_t and p != i]
-        # if len(alternative_tasks) != 0:
-        #     mdl.add(mdl.alternative(tasks[i][j], alternative_tasks))
-
-        # посмотрим, какие альтернативные задачи у нас есть
-        # print("Alters for worker {} and task {}".format(INSTALLERS[i][0], tasks[i][j].get_name()))
-        # for sp, v in enumerate(alternative_tasks):
-        #     print("... {} of {}".format(v.get_name(), alternative_worker[sp][0]))
-
+for i in range(ORDERS_COUNT):
+    a_t = WAIT_ORDERS[i][1]
+    kk = [tasks[p][k] for p in range(WORKERS_COUNT) for k in range(len(tasks[p])) if (tasks[p][k].get_name() == a_t)]
+    if len(kk) != 0:
+        mdl.add(mdl.alternative(tasks_act[i], kk, 1))
 
 # в один момент времени - одна задача
 for i in range(WORKERS_COUNT):
@@ -102,20 +95,24 @@ for i in range(ORDERS_COUNT):
     a_t = TASK_TEMPLATE_NAME.format(num=str(i), name=WAIT_ORDERS[i][1])
     mdl.add(mdl.sum([mdl.presence_of(t) for k in tasks for t in k if t.get_name() == a_t]) > 0)
 
-
 # OF
-mdl.add(mdl.minimize(mdl.max([mdl.end_of(t) * mdl.presence_of(t) for i, tp in enumerate(tasks) for j, t in enumerate(tp) ])))
+mdl.add(
+    mdl.minimize(mdl.max([mdl.end_of(t) * mdl.presence_of(t) for i, tp in enumerate(tasks) for j, t in enumerate(tp)]))
+)
 
 # вывод решения
 print("Solving model....")
 msol = mdl.solve(FailLimit=10000000, TimeLimit=100)
 print("Solution: ")
-# msol.print_solution()
+msol.print_solution()
 
-for w in range(WORKERS_COUNT):
-        #visu.sequence(name=WORKER_NAMES[w])
-        print("Tasks of worker {}".format(INSTALLERS[w][0]))
-        for t in tasks[w]:
+if msol and visu.is_visu_enabled():
+    for w in range(WORKERS_COUNT):
+        print("Task for installer {}".format(INSTALLERS[w][0]))
+        visu.sequence(name=trans_ru(INSTALLERS[w][0]))
+        for i, t in enumerate(tasks[w]):
             wt = msol.get_var_solution(t)
             if wt.is_present():
-                print("... {}".format(wt.get_name()))
+                print("--- {}".format(wt.get_name()))
+                visu.interval(wt, i, compact_name(trans_ru(wt.get_name())))
+    visu.show()
