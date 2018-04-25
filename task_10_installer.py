@@ -22,18 +22,24 @@ WAIT_ORDERS = [(2, "Выезд на Соломенную", 5, 0, 2),
                ]
 # Рассчитанная матрица путей между точками всех заказов
 PATH_POINTS_TIMES = [
-    0, 1, 1, 1, 1, 1,
-    1, 0, 1, 1, 1, 1,
-    1, 1, 0, 1, 1, 1,
-    1, 1, 1, 0, 1, 1,
-    1, 1, 1, 1, 0, 1,
-    1, 1, 1, 1, 1, 0
+    [0, 0, 1, 0],
+    [0, 0, 1, 0],
+    [1, 1, 1, 1],
+    [1, 1, 1, 1]
 ]
 
-MAX_SCHEDULE = 40
+MAX_SCHEDULE = 12
 ORDERS_COUNT = len(WAIT_ORDERS)
 WORKERS_COUNT = len(INSTALLERS)
 TASK_TEMPLATE_NAME = "T{num} - {name}"
+
+
+def find_distance(ivp, j):
+    i_name = ivp.get_name()
+    j_name = j.get_name()
+    i_ind = [x[1] for x in WAIT_ORDERS].index(i_name)
+    j_ind = [x[1] for x in WAIT_ORDERS].index(j_name)
+    return PATH_POINTS_TIMES[i_ind][j_ind]
 
 
 def print_tasks(tt):
@@ -100,11 +106,20 @@ mdl.add(
     mdl.minimize(mdl.max([mdl.end_of(t) * mdl.presence_of(t) for i, tp in enumerate(tasks) for j, t in enumerate(tp)]))
 )
 
+# добавим учёт времени на переходы
+workers_sequence = []
+for i in range(WORKERS_COUNT):
+    s = mdl.sequence_var(tasks[i], name="{}".format(INSTALLERS[i][0]), types=[x for x in range(len(tasks[i]))])
+    workers_sequence.append(s)
+    mdl.add(mdl.no_overlap(s, mdl.transition_matrix(szvals=PATH_POINTS_TIMES, name="DD")))
+
+
+
 # вывод решения
 print("Solving model....")
 msol = mdl.solve(FailLimit=10000000, TimeLimit=100)
 print("Solution: ")
-msol.print_solution()
+#msol.print_solution()
 
 if msol and visu.is_visu_enabled():
     for w in range(WORKERS_COUNT):
