@@ -18,14 +18,28 @@ WAIT_ORDERS = [(2, "Выезд на Соломенную", 5, 0, 2),
                (2, "Точка 1", 0, 8, 5),
                (4, "Установка комплекта", 3, 4, 2),
                (3, "В склад", 6, 5, 2),
-               (6, "Магазин на стройке", 3, 3, 3)
+               (6, "Магазин на стройке", 3, 3, 3),
+               (1, "Разовый 1", 3, 6, 4),
+               (3, "Разовый 2", 3, 6, 4),
+               (3, "Разовый 3", 6, 1, 3),
+               (2, "Разовый 4", 2, 1, 1)
                ]
 # Рассчитанная матрица путей между точками всех заказов
+# PATH_POINTS_TIMES = [
+#     [0, 0, 1, 0],
+#     [0, 0, 1, 0],
+#     [1, 1, 1, 1],
+#     [1, 1, 1, 1]
+# ]
 PATH_POINTS_TIMES = [
-    [0, 0, 1, 0],
-    [0, 0, 1, 0],
-    [1, 1, 1, 1],
-    [1, 1, 1, 1]
+    [1, 1, 1, 1, 1, 1, 1, 1],
+    [0, 1, 1, 1, 2, 1, 1, 1],
+    [1, 1, 1, 2, 1, 1, 1, 1],
+    [2, 1, 1, 2, 0, 1, 1, 1],
+    [2, 1, 1, 2, 1, 1, 1, 1],
+    [2, 1, 2, 1, 1, 1, 1, 1],
+    [2, 1, 2, 1, 1, 1, 1, 1],
+    [2, 1, 2, 1, 1, 1, 1, 1]
 ]
 
 MAX_SCHEDULE = 12
@@ -113,13 +127,11 @@ for i in range(WORKERS_COUNT):
     workers_sequence.append(s)
     mdl.add(mdl.no_overlap(s, mdl.transition_matrix(szvals=PATH_POINTS_TIMES, name="DD")))
 
-
-
 # вывод решения
 print("Solving model....")
-msol = mdl.solve(FailLimit=10000000, TimeLimit=100)
+msol = mdl.solve(FailLimit=10000000, TimeLimit=60 * 3, LogVerbosity="Terse")
 print("Solution: ")
-#msol.print_solution()
+# msol.print_solution()
 
 if msol and visu.is_visu_enabled():
     for w in range(WORKERS_COUNT):
